@@ -8,7 +8,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
-      - run: ./gradlew :patches:apiDump :patches:build
+      - name: Build patches
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
+          ORG_GRADLE_PROJECT_githubPackagesUsername: ${{ github.actor }}
+          ORG_GRADLE_PROJECT_githubPackagesPassword: ${{ github.token }}
+        run: ./gradlew :patches:apiDump :patches:build
       - name: Tools
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
