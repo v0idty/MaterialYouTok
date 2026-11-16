@@ -14,7 +14,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           ORG_GRADLE_PROJECT_githubPackagesUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPackagesPassword: ${{ github.token }}
-        run: ./gradlew :patches:apiDump :patches:build
+        run: ./gradlew :patches:build -x :patches:apiCheck
       - name: Tools
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
