@@ -4,6 +4,7 @@ import app.revanced.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.revanced.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
@@ -16,10 +17,9 @@ private val targets = mapOf(
     "getNetworkOperator" to "networkOperator",
 )
 
-private fun targetOf(ins: Any): String? {
-    if (ins !is ReferenceInstruction || ins !is FiveRegisterInstruction) return null
+private fun targetOf(ins: Instruction): String? {
     if (ins.opcode != Opcode.INVOKE_VIRTUAL) return null
-    val ref = ins.reference as? MethodReference ?: return null
+    val ref = (ins as? ReferenceInstruction)?.reference as? MethodReference ?: return null
     if (ref.definingClass != "Landroid/telephony/TelephonyManager;") return null
     return targets[ref.name]
 }
@@ -34,14 +34,14 @@ val materialYouTokRegionPatch = bytecodePatch(
     extendWith("extensions/extension.rve")
 
     execute {
-        classDefs.toList().forEach { original ->
-            val needsPatch = original.methods.any { m ->
-                m.implementation?.instructions?.any { targetOf(it) != null } == true
+        classes.toList().forEach { classDef ->
+            val needsPatch = classDef.methods.any { method ->
+                method.implementation?.instructions?.any { targetOf(it) != null } == true
             }
             if (!needsPatch) return@forEach
 
-            val mutable = classDefs.getOrReplaceMutable(original)
-            mutable.methods.forEach { method ->
+            val mutableClass = proxy(classDef).mutableClass
+            mutableClass.methods.forEach { method ->
                 val impl = method.implementation ?: return@forEach
                 impl.instructions.toList().forEachIndexed { index, ins ->
                     val replacement = targetOf(ins) ?: return@forEachIndexed
