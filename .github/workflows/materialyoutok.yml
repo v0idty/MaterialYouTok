@@ -15,6 +15,13 @@ jobs:
           ORG_GRADLE_PROJECT_githubPackagesUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPackagesPassword: ${{ github.token }}
         run: ./gradlew :patches:build -x :patches:apiCheck
+        - name: Dump patcher API
+        if: always()
+        run: |
+          JAR=$(find ~/.gradle -name 'revanced-patcher-*.jar' ! -name '*sources*' ! -name '*javadoc*' | head -n1)
+          echo "JAR=$JAR"
+          unzip -l "$JAR" | grep -i -E 'Context|ClassDef' | head -30
+          javap -cp "$JAR" app.revanced.patcher.patch.BytecodePatchContext || true
       - name: CLI
         env: { GH_TOKEN: "${{ github.token }}" }
         run: gh release download --repo ReVanced/revanced-cli --pattern '*-all.jar' --output cli.jar
