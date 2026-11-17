@@ -35,7 +35,7 @@ jobs:
       - name: Patch
         run: |
           MY=$(ls patches/build/libs/*.rvp | head -n1)
-          java -jar cli.jar patch -p "$MY" \
+          java -jar cli.jar patch -p "$MY" -b \
             -e "MaterialYouTok region" \
             -e "MaterialYouTok icon" \
             -o MaterialYouTok.apk tiktok.apk
