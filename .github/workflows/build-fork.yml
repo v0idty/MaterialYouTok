@@ -1,0 +1,26 @@
+name: Build fork
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Get sources
+        run: git clone --depth 1 https://git.narez.xyz/narezany/MargyT src
+      - name: Original TikTok
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh release download src2 --repo "${{ github.repository }}" --pattern 'tiktok.apk' --output tiktok.apk
+      - name: Build
+        env: { MARGYT_WORKERS: "2" }
+        run: |
+          cd src
+          chmod +x build.sh
+          ./build.sh ../tiktok.apk
+          ls -l build
+      - name: Publish APK to private release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh release create "fork-${{ github.run_number }}" src/build/*.apk --repo "${{ github.repository }}" --title "Fork build ${{ github.run_number }}" --notes "Private test build"
