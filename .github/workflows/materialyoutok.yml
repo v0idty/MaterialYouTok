@@ -41,7 +41,10 @@ jobs:
           echo "RVP archive contents:"
           unzip -l "$MY" | head -80
           echo "Patches visible to CLI:"
-          PATCH_LIST=$(java -jar cli.jar list-patches --packages --versions "$MY" 2>&1)
+          if ! PATCH_LIST=$(java -jar cli.jar list-patches --packages --versions --options -bp "$MY" 2>&1); then
+            printf '%s\n' "$PATCH_LIST"
+            exit 1
+          fi
           printf '%s\n' "$PATCH_LIST"
           printf '%s\n' "$PATCH_LIST" | grep -F "Name: MaterialYouTok icon" >/dev/null
 
