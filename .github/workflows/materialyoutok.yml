@@ -89,6 +89,40 @@ jobs:
               find "$dir" -type f -iname '*.png' -size 0 -printf '%p | %s bytes\\n'
             done
 
+      - name: Diagnose invalid decoded resource XML after patch failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          RES="MaterialYouTok-temporary-files/patcher/apk/res"
+          python3 - "$RES" <<'PY'
+          import pathlib
+          import sys
+          import xml.etree.ElementTree as ET
+
+          root = pathlib.Path(sys.argv[1])
+          if not root.is_dir():
+              print(f"Decoded resources directory not found: {root}")
+              raise SystemExit(0)
+
+          failures = 0
+          for path in root.rglob("*.xml"):
+              try:
+                  ET.parse(path)
+              except ET.ParseError as error:
+                  failures += 1
+                  line, column = error.position
+                  print(f"INVALID XML: {path} ({error})")
+                  lines = path.read_text(encoding="utf-8", errors="backslashreplace").splitlines()
+                  for number in range(max(1, line - 2), min(len(lines), line + 2) + 1):
+                      print(f"{number}: {lines[number - 1][:500]!r}")
+                  raw_lines = path.read_bytes().splitlines()
+                  if 1 <= line <= len(raw_lines):
+                      print(f"line {line} bytes: {raw_lines[line - 1][:500].hex(' ')}")
+
+          print(f"Malformed resource XML files found: {failures}")
+          PY
+
       - name: Verify patched APK
         run: |
           set -euo pipefail
