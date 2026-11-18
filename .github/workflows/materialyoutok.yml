@@ -84,7 +84,7 @@ jobs:
           fi
 
           echo "Zero-byte drawable PNG resources:"
-          find "$RES" -type d \\( -name 'drawable' -o -name 'drawable-*' \\) -print0 |
+          find "$RES" -mindepth 1 -maxdepth 1 -type d -name 'drawable*' -print0 |
             while IFS= read -r -d '' dir; do
               find "$dir" -type f -iname '*.png' -size 0 -printf '%p | %s bytes\\n'
             done
