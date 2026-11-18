@@ -75,6 +75,34 @@ jobs:
             -o MaterialYouTok.apk tiktok.apk
           test -s MaterialYouTok.apk
 
+      - name: Diagnose numeric manifest resource references after patch failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="MaterialYouTok-temporary-files/patcher/apk/AndroidManifest.xml"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "Decoded AndroidManifest.xml not found: $MANIFEST"
+            exit 0
+          fi
+          python3 - "$MANIFEST" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          lines = path.read_text(encoding="utf-8", errors="backslashreplace").splitlines()
+          found = 0
+          for number, line in enumerate(lines, 1):
+              if re.search(r'@[0-9]{6,}', line):
+                  found += 1
+                  print(f"{path}:{number}: {line[:1000]}")
+          print(f"Decimal-looking manifest resource references: {found}")
+          print("Manifest lines around the AAPT2 failure (line 2877):")
+          for number in range(max(1, 2877 - 3), min(len(lines), 2877 + 3) + 1):
+              print(f"{number}: {lines[number - 1][:1000]}")
+          PY
+
       - name: Diagnose empty drawable PNGs after patch failure
         if: failure()
         shell: bash
