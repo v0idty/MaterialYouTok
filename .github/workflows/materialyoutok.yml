@@ -55,8 +55,11 @@ jobs:
           set -euo pipefail
           AAPT=$(find /usr/local/lib/android/sdk/build-tools -name aapt2 | sort -V | tail -n1)
           test -s tiktok.apk
-          "$AAPT" dump badging tiktok.apk | grep -E "^package:|^application:"
-          "$AAPT" dump badging tiktok.apk | grep -F "package: name='com.zhiliaoapp.musically'" >/dev/null
+          SOURCE_BADGING=$("$AAPT" dump badging tiktok.apk)
+          printf '%s\n' "$SOURCE_BADGING" | grep -E "^package:|^application:"
+          printf '%s\n' "$SOURCE_BADGING" | grep -F "package: name='com.zhiliaoapp.musically'" >/dev/null
+          printf '%s\n' "$SOURCE_BADGING" | grep -F "versionName='47.2.41'" >/dev/null
+          echo "Verified pinned src2 input: TikTok 47.2.41."
 
       - name: Patch app branding only
         run: |
@@ -83,15 +86,18 @@ jobs:
           grep -n -A10 -B2 "E: application" manifest-tree.txt | head -50
           printf '%s\n' "$BADGING" | grep -F "application-label:'MaterialYouTok'" >/dev/null
           printf '%s\n' "$BADGING" | grep -F "package: name='com.zhiliaoapp.musically'" >/dev/null
+          printf '%s\n' "$BADGING" | grep -F "versionName='47.2.41'" >/dev/null
 
           ICON_PATH=$(printf '%s\n' "$BADGING" | sed -n "s/^application:.* icon='\\([^']*\\)'.*/\\1/p" | head -n1)
           test -n "$ICON_PATH"
           unzip -p MaterialYouTok.apk "$ICON_PATH" > patched-icon.png
           file patched-icon.png | grep -F "PNG image data" >/dev/null
           test -s patched-icon.png
+          cmp -s patched-icon.png patches/src/main/resources/materialyoutok/ic_launcher.png
+          sha256sum patched-icon.png
 
           "$APKSIGNER" verify --verbose MaterialYouTok.apk
-          echo "Verified: package, MaterialYouTok label, launcher icon bytes, and APK signature."
+          echo "Verified: pinned TikTok version, package, MaterialYouTok label, exact launcher icon asset, and APK signature."
 
       - name: Publish APK to private release
         env: { GH_TOKEN: "${{ github.token }}" }
