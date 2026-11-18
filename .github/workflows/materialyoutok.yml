@@ -10,6 +10,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
+
       - name: Build patches
         env:
           GITHUB_ACTOR: ${{ github.actor }}
@@ -17,26 +18,53 @@ jobs:
           ORG_GRADLE_PROJECT_githubPackagesUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPackagesPassword: ${{ github.token }}
         run: ./gradlew :patches:build -x :patches:apiCheck
+
       - name: CLI
         env: { GH_TOKEN: "${{ github.token }}" }
         run: gh release download --repo ReVanced/revanced-cli --pattern '*-all.jar' --output cli.jar
+
+      # Keep the selected source release: src2 contains the project's pinned TikTok 47.2.41 input.
       - name: Original TikTok
         env: { GH_TOKEN: "${{ github.token }}" }
         run: gh release download src2 --repo "${{ github.repository }}" --pattern 'tiktok.apk' --output tiktok.apk
-      - name: Verify APK
+
+      - name: Verify original APK
         run: |
-          AAPT=$(find /usr/local/lib/android/sdk/build-tools -name aapt2 | sort | tail -n1)
-          APKSIGNER=$(find /usr/local/lib/android/sdk/build-tools -name apksigner | sort | tail -n1)
-          echo "APKSIGNER=$APKSIGNER"
-          "$AAPT" dump badging tiktok.apk | grep -E "^package:|application-label:'" || true
-          "$APKSIGNER" verify --verbose --print-certs tiktok.apk 2>&1 | head -30 || true
-          ls -l tiktok.apk
-      - name: Patch
+          set -euo pipefail
+          AAPT=$(find /usr/local/lib/android/sdk/build-tools -name aapt2 | sort -V | tail -n1)
+          test -s tiktok.apk
+          "$AAPT" dump badging tiktok.apk | grep -E "^package:|^application:"
+          "$AAPT" dump badging tiktok.apk | grep -F "package: name='com.zhiliaoapp.musically'" >/dev/null
+
+      - name: Patch app branding only
         run: |
-          MY=$(ls patches/build/libs/*.rvp | head -n1)
-          java -jar cli.jar patch -p "$MY" -b \
+          set -euo pipefail
+          MY=$(find patches/build/libs -maxdepth 1 -type f -name '*.rvp' -print -quit)
+          test -n "$MY"
+          # --exclusive is intentional: do not implicitly apply every default-enabled patch.
+          java -jar cli.jar patch -p "$MY" -b --exclusive \
             -e "MaterialYouTok icon" \
             -o MaterialYouTok.apk tiktok.apk
+          test -s MaterialYouTok.apk
+
+      - name: Verify patched APK
+        run: |
+          set -euo pipefail
+          AAPT=$(find /usr/local/lib/android/sdk/build-tools -name aapt2 | sort -V | tail -n1)
+          APKSIGNER=$(find /usr/local/lib/android/sdk/build-tools -name apksigner | sort -V | tail -n1)
+
+          BADGING=$("$AAPT" dump badging MaterialYouTok.apk)
+          printf '%s\n' "$BADGING" | grep -F "application-label:'MaterialYouTok'" >/dev/null
+          printf '%s\n' "$BADGING" | grep -F "package: name='com.zhiliaoapp.musically'" >/dev/null
+
+          ICON_PATH=$(printf '%s\n' "$BADGING" | sed -n "s/^application:.* icon='\\([^']*\\)'.*/\\1/p" | head -n1)
+          test -n "$ICON_PATH"
+          unzip -p MaterialYouTok.apk "$ICON_PATH" > patched-icon.png
+          cmp patches/src/main/resources/materialyoutok/ic_launcher.png patched-icon.png
+
+          "$APKSIGNER" verify --verbose MaterialYouTok.apk
+          echo "Verified: package, MaterialYouTok label, launcher icon bytes, and APK signature."
+
       - name: Publish APK to private release
         env: { GH_TOKEN: "${{ github.token }}" }
-        run: gh release create "build-${{ github.run_number }}" MaterialYouTok.apk --repo "${{ github.repository }}" --title "MaterialYouTok build ${{ github.run_number }}" --notes "Private test build"
+        run: gh release create "build-${{ github.run_number }}" MaterialYouTok.apk --repo "${{ github.repository }}" --title "MaterialYouTok build ${{ github.run_number }}" --notes "Branding-only test build"
