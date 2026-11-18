@@ -9,35 +9,27 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - name: Build patches
-        id: build
-        continue-on-error: true
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ github.token }}
           ORG_GRADLE_PROJECT_githubPackagesUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPackagesPassword: ${{ github.token }}
         run: ./gradlew :patches:build -x :patches:apiCheck
-      - name: Dump patcher API
-        run: |
-          JAR=$(find ~/.gradle -name 'revanced-patcher-*.jar' ! -name '*sources*' ! -name '*javadoc*' | head -n1)
-          echo "JAR=$JAR"
-          unzip -l "$JAR" | grep -i -E 'Context|ClassDef' | head -30
-          javap -cp "$JAR" app.revanced.patcher.patch.BytecodePatchContext || true
-      - name: Fail if build failed
-        if: steps.build.outcome == 'failure'
-        run: exit 1
       - name: CLI
         env: { GH_TOKEN: "${{ github.token }}" }
         run: gh release download --repo ReVanced/revanced-cli --pattern '*-all.jar' --output cli.jar
       - name: Original TikTok
         env: { GH_TOKEN: "${{ github.token }}" }
         run: gh release download src --repo "${{ github.repository }}" --pattern 'tiktok.apk' --output tiktok.apk
+      - name: Inspect icon
+        run: |
+          AAPT=$(find /usr/local/lib/android/sdk/build-tools -name aapt2 | sort | tail -n1)
+          "$AAPT" dump badging tiktok.apk | grep -E "application-label:|application-icon|launchable-activity" | head -20
+          unzip -l tiktok.apk | grep -iE 'res/.*(launcher|app_icon|logo)' | head -40
       - name: Patch
         run: |
           MY=$(ls patches/build/libs/*.rvp | head -n1)
           java -jar cli.jar patch -p "$MY" -b \
-            -e "MaterialYouTok region" \
-            -e "MaterialYouTok settings" \
             -e "MaterialYouTok icon" \
             -o MaterialYouTok.apk tiktok.apk
       - uses: actions/upload-artifact@v4
