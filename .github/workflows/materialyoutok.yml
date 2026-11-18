@@ -29,7 +29,7 @@ jobs:
 
       - name: CLI
         env: { GH_TOKEN: "${{ github.token }}" }
-        run: gh release download v5.0.1 --repo ReVanced/revanced-cli --pattern '*-all.jar' --output cli.jar
+        run: gh release download v6.0.0 --repo ReVanced/revanced-cli --pattern '*-all.jar' --output cli.jar
 
       - name: Inspect built patches
         run: |
@@ -41,7 +41,7 @@ jobs:
           echo "RVP archive contents:"
           unzip -l "$MY" | head -80
           echo "Patches visible to CLI:"
-          PATCH_LIST=$(java -jar cli.jar list-patches --with-packages --with-versions "$MY" 2>&1)
+          PATCH_LIST=$(java -jar cli.jar list-patches --packages --versions "$MY" 2>&1)
           printf '%s\n' "$PATCH_LIST"
           printf '%s\n' "$PATCH_LIST" | grep -F "Name: MaterialYouTok icon" >/dev/null
 
@@ -67,7 +67,7 @@ jobs:
           MY=$(find patches/build/libs -maxdepth 1 -type f -name '*.rvp' ! -name '*-sources.rvp' ! -name '*-javadoc.rvp' -print -quit)
           test -n "$MY"
           # --exclusive is intentional: do not implicitly apply every default-enabled patch.
-          java -jar cli.jar patch -p "$MY" --exclusive \
+          java -jar cli.jar patch -p "$MY" -b --exclusive \
             -e "MaterialYouTok icon" \
             -o MaterialYouTok.apk tiktok.apk
           test -s MaterialYouTok.apk
