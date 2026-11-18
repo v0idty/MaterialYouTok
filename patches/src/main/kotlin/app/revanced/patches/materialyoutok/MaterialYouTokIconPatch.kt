@@ -80,6 +80,33 @@ val materialYouTokIconPatch = resourcePatch(
             val app = doc.getElementsByTagName("application").item(0) as? Element
                 ?: error("AndroidManifest.xml has no application element.")
 
+            // The source APK is derived from Play split delivery. This metadata points
+            // to an XML resource that belongs to a separate split package, not this APK.
+            // A single-APK rebuild must not retain Play's split manifest reference.
+            val splitMetadataNames = setOf(
+                "com.android.vending.splits",
+                "com.android.vending.splits.required"
+            )
+            val metadataNodes = app.getElementsByTagName("meta-data")
+            var removedSplitMetadata = 0
+            for (index in metadataNodes.length - 1 downTo 0) {
+                val metadata = metadataNodes.item(index) as? Element ?: continue
+                if (metadata.parentNode != app) continue
+                val metadataName = metadata.getAttribute("android:name")
+                if (metadataName !in splitMetadataNames) continue
+                app.removeChild(metadata)
+                println("Removed Play split metadata from standalone APK: $metadataName")
+                removedSplitMetadata++
+            }
+            if (removedSplitMetadata > 0) {
+                println("Removed $removedSplitMetadata Play split metadata entries.")
+            }
+
+            if (app.getAttribute("android:isSplitRequired").equals("true", ignoreCase = true)) {
+                app.setAttributeNS(androidNs, "android:isSplitRequired", "false")
+                println("Set android:isSplitRequired=false for standalone APK output.")
+            }
+
             app.setAttributeNS(androidNs, "android:label", "MaterialYouTok")
             listOf("android:icon", "android:roundIcon").forEach { attr ->
                 val value = app.getAttribute(attr)
@@ -106,40 +133,6 @@ val materialYouTokIconPatch = resourcePatch(
                 }
             }
 
-            // Apktool can decode an unresolved binary resource ID as a decimal token
-            // (for example, @1309212672). AAPT2 expects raw IDs in hexadecimal form.
-            // Preserve the exact 32-bit ID and normalize only values that structurally
-            // look like Android resource IDs; leave ordinary @-strings untouched.
-            var normalizedResourceIds = 0
-            val allElements = doc.getElementsByTagName("*")
-            for (elementIndex in 0 until allElements.length) {
-                val element = allElements.item(elementIndex) as? Element ?: continue
-                val attributes = element.attributes
-                for (attributeIndex in 0 until attributes.length) {
-                    val attribute = attributes.item(attributeIndex)
-                    val value = attribute.nodeValue ?: continue
-                    if (!value.matches(Regex("@[0-9]{8,10}"))) continue
-
-                    val decimalId = value.substring(1).toLongOrNull() ?: continue
-                    if (decimalId !in 1L..0xFFFF_FFFFL) continue
-
-                    val packageId = (decimalId ushr 24) and 0xFF
-                    val typeId = (decimalId ushr 16) and 0xFF
-                    if (packageId == 0L || typeId == 0L) continue
-
-                    val hexReference = "@0x" + decimalId.toString(16).padStart(8, '0')
-                    attribute.nodeValue = hexReference
-                    println(
-                        "Normalized numeric manifest resource reference " +
-                            "${element.tagName}.${attribute.nodeName}: " +
-                            "$value -> $hexReference"
-                    )
-                    normalizedResourceIds++
-                }
-            }
-            if (normalizedResourceIds > 0) {
-                println("Normalized $normalizedResourceIds decimal Android resource ID reference(s) in AndroidManifest.xml.")
-            }
         }
 
         require(refs.isNotEmpty()) {
