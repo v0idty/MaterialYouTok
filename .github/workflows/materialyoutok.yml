@@ -72,7 +72,7 @@ jobs:
             -o MaterialYouTok.apk tiktok.apk
           test -s MaterialYouTok.apk
 
-      - name: Diagnose decoded PNG resources after patch failure
+      - name: Diagnose empty drawable PNGs after patch failure
         if: failure()
         shell: bash
         run: |
@@ -80,16 +80,14 @@ jobs:
           RES="MaterialYouTok-temporary-files/patcher/apk/res"
           if [ ! -d "$RES" ]; then
             echo "Decoded resources directory not found: $RES"
-            find . -maxdepth 4 -type d -name res -print
             exit 0
           fi
 
-          echo "Path | Size (bytes) | First 16 bytes"
-          while IFS= read -r -d '' file; do
-            size=$(stat -c '%s' "$file")
-            header=$(od -An -tx1 -N16 "$file" | tr -s ' ' | sed 's/^ //;s/ $//')
-            printf '%s | %s | %s\n' "$file" "$size" "$header"
-          done < <(find "$RES" -type f -iname '*.png' ! -iname '*.9.png' -print0)
+          echo "Zero-byte drawable PNG resources:"
+          find "$RES" -type d \\( -name 'drawable' -o -name 'drawable-*' \\) -print0 |
+            while IFS= read -r -d '' dir; do
+              find "$dir" -type f -iname '*.png' -size 0 -printf '%p | %s bytes\\n'
+            done
 
       - name: Verify patched APK
         run: |
