@@ -62,6 +62,10 @@ jobs:
           APKSIGNER=$(find /usr/local/lib/android/sdk/build-tools -name apksigner | sort -V | tail -n1)
 
           BADGING=$("$AAPT" dump badging MaterialYouTok.apk)
+          echo "---- patched APK badging ----"
+          printf '%s\n' "$BADGING" | grep -E "^(package:|application:|application-label:)"
+          echo "---- manifest label attributes ----"
+          "$AAPT" dump xmltree MaterialYouTok.apk AndroidManifest.xml | grep -E -A2 -B2 "MaterialYouTok|android:label" | head -40
           printf '%s\n' "$BADGING" | grep -F "application-label:'MaterialYouTok'" >/dev/null
           printf '%s\n' "$BADGING" | grep -F "package: name='com.zhiliaoapp.musically'" >/dev/null
 
