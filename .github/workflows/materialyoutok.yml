@@ -36,7 +36,12 @@ jobs:
           set -euo pipefail
           MY=$(find patches/build/libs -maxdepth 1 -type f -name '*.rvp' -print -quit)
           test -n "$MY"
-          java -jar cli.jar list-patches -bp "$MY" --packages --versions
+          echo "Selected patches artifact: $MY"
+          ls -lah patches/build/libs
+          echo "RVP archive contents:"
+          unzip -l "$MY" | head -80
+          echo "Patches visible to CLI:"
+          java -jar cli.jar list-patches -p "$MY" -b --packages --versions
 
       # Keep the selected source release: src2 contains the project's pinned TikTok 47.2.41 input.
       - name: Original TikTok
@@ -72,7 +77,8 @@ jobs:
           echo "---- patched APK badging ----"
           printf '%s\n' "$BADGING" | grep -E "^(package:|application:|application-label:)"
           echo "---- manifest label attributes ----"
-          "$AAPT" dump xmltree --file AndroidManifest.xml MaterialYouTok.apk | grep -E -A2 -B2 "MaterialYouTok|label|icon" | head -60
+          "$AAPT" dump xmltree --file AndroidManifest.xml MaterialYouTok.apk > manifest-tree.txt
+          grep -n -A10 -B2 "E: application" manifest-tree.txt | head -50
           printf '%s\n' "$BADGING" | grep -F "application-label:'MaterialYouTok'" >/dev/null
           printf '%s\n' "$BADGING" | grep -F "package: name='com.zhiliaoapp.musically'" >/dev/null
 
