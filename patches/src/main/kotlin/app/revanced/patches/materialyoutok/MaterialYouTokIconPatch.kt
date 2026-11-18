@@ -71,7 +71,7 @@ val materialYouTokIconPatch = resourcePatch(
 
             // Remove all density/adaptive variants so Android cannot keep selecting the old icon.
             res.listFiles()
-                ?.filter { it.isDirectory && it.name.startsWith("$type-") }
+                ?.filter { it.isDirectory && it.name.startsWith(type) }
                 ?.forEach { dir ->
                     dir.listFiles()
                         ?.filter { it.isFile && it.nameWithoutExtension == name }
