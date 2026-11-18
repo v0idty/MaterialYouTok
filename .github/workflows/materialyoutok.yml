@@ -4,6 +4,8 @@ on: workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -32,8 +34,6 @@ jobs:
           java -jar cli.jar patch -p "$MY" -b \
             -e "MaterialYouTok icon" \
             -o MaterialYouTok.apk tiktok.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: MaterialYouTok
-          path: MaterialYouTok.apk
-          retention-days: 3
+      - name: Publish APK to private release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh release create "build-${{ github.run_number }}" MaterialYouTok.apk --repo "${{ github.repository }}" --title "MaterialYouTok build ${{ github.run_number }}" --notes "Private test build"
