@@ -23,11 +23,12 @@ jobs:
       - name: Original TikTok
         env: { GH_TOKEN: "${{ github.token }}" }
         run: gh release download src2 --repo "${{ github.repository }}" --pattern 'tiktok.apk' --output tiktok.apk
-      - name: Inspect icon
+      - name: Verify APK
         run: |
           AAPT=$(find /usr/local/lib/android/sdk/build-tools -name aapt2 | sort | tail -n1)
-          "$AAPT" dump badging tiktok.apk | grep -E "application-label:|application-icon|launchable-activity" | head -20
-          unzip -l tiktok.apk | grep -iE 'res/.*(launcher|app_icon|logo)' | head -40
+          APKSIGNER=$(find /usr/local/lib/android/sdk/build-tools -name apksigner | sort | tail -n1)
+          "$AAPT" dump badging tiktok.apk | grep -E "^package:|application-label:'"
+          "$APKSIGNER" verify --print-certs tiktok.apk | grep -E "Signer #1 certificate (DN|SHA-256)"
       - name: Patch
         run: |
           MY=$(ls patches/build/libs/*.rvp | head -n1)
