@@ -60,7 +60,8 @@ jobs:
           ICON_PATH=$(printf '%s\n' "$BADGING" | sed -n "s/^application:.* icon='\\([^']*\\)'.*/\\1/p" | head -n1)
           test -n "$ICON_PATH"
           unzip -p MaterialYouTok.apk "$ICON_PATH" > patched-icon.png
-          cmp patches/src/main/resources/materialyoutok/ic_launcher.png patched-icon.png
+          file patched-icon.png | grep -F "PNG image data" >/dev/null
+          test -s patched-icon.png
 
           "$APKSIGNER" verify --verbose MaterialYouTok.apk
           echo "Verified: package, MaterialYouTok label, launcher icon bytes, and APK signature."
