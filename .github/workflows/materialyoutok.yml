@@ -22,7 +22,7 @@ jobs:
         run: gh release download --repo ReVanced/revanced-cli --pattern '*-all.jar' --output cli.jar
       - name: Original TikTok
         env: { GH_TOKEN: "${{ github.token }}" }
-        run: gh release download src --repo "${{ github.repository }}" --pattern 'tiktok.apk' --output tiktok.apk
+        run: gh release download src2 --repo "${{ github.repository }}" --pattern 'tiktok.apk' --output tiktok.apk
       - name: Inspect icon
         run: |
           AAPT=$(find /usr/local/lib/android/sdk/build-tools -name aapt2 | sort | tail -n1)
