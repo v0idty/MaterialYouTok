@@ -105,6 +105,41 @@ val materialYouTokIconPatch = resourcePatch(
                     }
                 }
             }
+
+            // Apktool can decode an unresolved binary resource ID as a decimal token
+            // (for example, @1309212672). AAPT2 expects raw IDs in hexadecimal form.
+            // Preserve the exact 32-bit ID and normalize only values that structurally
+            // look like Android resource IDs; leave ordinary @-strings untouched.
+            var normalizedResourceIds = 0
+            val allElements = doc.getElementsByTagName("*")
+            for (elementIndex in 0 until allElements.length) {
+                val element = allElements.item(elementIndex) as? Element ?: continue
+                val attributes = element.attributes
+                for (attributeIndex in 0 until attributes.length) {
+                    val attribute = attributes.item(attributeIndex)
+                    val value = attribute.nodeValue ?: continue
+                    if (!value.matches(Regex("@[0-9]{8,10}"))) continue
+
+                    val decimalId = value.substring(1).toLongOrNull() ?: continue
+                    if (decimalId !in 1L..0xFFFF_FFFFL) continue
+
+                    val packageId = (decimalId ushr 24) and 0xFF
+                    val typeId = (decimalId ushr 16) and 0xFF
+                    if (packageId == 0L || typeId == 0L) continue
+
+                    val hexReference = "@0x" + decimalId.toString(16).padStart(8, '0')
+                    attribute.nodeValue = hexReference
+                    println(
+                        "Normalized numeric manifest resource reference " +
+                            "${element.tagName}.${attribute.nodeName}: " +
+                            "$value -> $hexReference"
+                    )
+                    normalizedResourceIds++
+                }
+            }
+            if (normalizedResourceIds > 0) {
+                println("Normalized $normalizedResourceIds decimal Android resource ID reference(s) in AndroidManifest.xml.")
+            }
         }
 
         require(refs.isNotEmpty()) {
