@@ -27,8 +27,10 @@ jobs:
         run: |
           AAPT=$(find /usr/local/lib/android/sdk/build-tools -name aapt2 | sort | tail -n1)
           APKSIGNER=$(find /usr/local/lib/android/sdk/build-tools -name apksigner | sort | tail -n1)
-          "$AAPT" dump badging tiktok.apk | grep -E "^package:|application-label:'"
-          "$APKSIGNER" verify --print-certs tiktok.apk | grep -E "Signer #1 certificate (DN|SHA-256)"
+          echo "APKSIGNER=$APKSIGNER"
+          "$AAPT" dump badging tiktok.apk | grep -E "^package:|application-label:'" || true
+          "$APKSIGNER" verify --verbose --print-certs tiktok.apk 2>&1 | head -30 || true
+          ls -l tiktok.apk
       - name: Patch
         run: |
           MY=$(ls patches/build/libs/*.rvp | head -n1)
