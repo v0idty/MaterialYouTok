@@ -23,13 +23,14 @@ val materialYouTokIconPatch = resourcePatch(
             )
         ) { "MaterialYouTok launcher image is not a valid PNG." }
 
+        val androidNs = "http://schemas.android.com/apk/res/android"
         val refs = linkedSetOf<String>()
 
         document("AndroidManifest.xml").use { doc ->
             val app = doc.getElementsByTagName("application").item(0) as? Element
                 ?: error("AndroidManifest.xml has no application element.")
 
-            app.setAttribute("android:label", "MaterialYouTok")
+            app.setAttributeNS(androidNs, "android:label", "MaterialYouTok")
             listOf("android:icon", "android:roundIcon").forEach { attr ->
                 val value = app.getAttribute(attr)
                 if (value.startsWith("@")) refs.add(value)
@@ -47,7 +48,7 @@ val materialYouTokIconPatch = resourcePatch(
                     if (!isLauncher) continue
 
                     // Make launcher aliases use the same visible app name and image.
-                    element.setAttribute("android:label", "MaterialYouTok")
+                    element.setAttributeNS(androidNs, "android:label", "MaterialYouTok")
                     listOf("android:icon", "android:roundIcon").forEach { attr ->
                         val value = element.getAttribute(attr)
                         if (value.startsWith("@")) refs.add(value)
