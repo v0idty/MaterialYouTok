@@ -72,6 +72,25 @@ jobs:
             -o MaterialYouTok.apk tiktok.apk
           test -s MaterialYouTok.apk
 
+      - name: Diagnose decoded PNG resources after patch failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          RES="MaterialYouTok-temporary-files/patcher/apk/res"
+          if [ ! -d "$RES" ]; then
+            echo "Decoded resources directory not found: $RES"
+            find . -maxdepth 4 -type d -name res -print
+            exit 0
+          fi
+
+          echo "Path | Size (bytes) | First 16 bytes"
+          while IFS= read -r -d '' file; do
+            size=$(stat -c '%s' "$file")
+            header=$(od -An -tx1 -N16 "$file" | tr -s ' ' | sed 's/^ //;s/ $//')
+            printf '%s | %s | %s\n' "$file" "$size" "$header"
+          done < <(find "$RES" -type f -iname '*.png' ! -iname '*.9.png' -print0)
+
       - name: Verify patched APK
         run: |
           set -euo pipefail
