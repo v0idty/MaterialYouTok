@@ -21,15 +21,12 @@ jobs:
           chmod +x build.sh
           ./build.sh ../tiktok.apk
           ls -l build
-          - name: Check result
+      - name: Check result
         run: |
           AAPT=$(find /usr/local/lib/android/sdk/build-tools -name aapt2 | sort | tail -n1)
-          ls -l src/build
           for f in src/build/*.apk; do
             echo "== $f"
             "$AAPT" dump badging "$f" | grep -E "^package:|application-label:'" || true
-            echo -n "mod markers: "
-            unzip -p "$f" 'classes*.dex' | grep -a -c "cat/narezany/margyt" || true
           done
       - name: Publish APK to private release
         env: { GH_TOKEN: "${{ github.token }}" }
